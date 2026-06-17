@@ -90,10 +90,10 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .sort-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 9px;border-radius:5px;border:1px solid var(--border2);background:var(--surface);color:var(--muted2);cursor:pointer;transition:all .15s;}
 .sort-btn:hover,.sort-btn.active{background:var(--text);color:#fff;border-color:var(--text);}
 .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:13px;overflow:hidden;overflow-x:auto;}
-table{width:100%;border-collapse:collapse;min-width:900px;}
+table{width:100%;border-collapse:collapse;min-width:1100px;table-layout:fixed;}
 thead{background:var(--surface2);border-bottom:1px solid var(--border2);}
-th{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);padding:10px 11px;text-align:left;font-weight:500;white-space:nowrap;}
-td{padding:9px 11px;border-bottom:1px solid var(--border);vertical-align:middle;}
+th{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);padding:10px 10px;text-align:left;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle;overflow:hidden;}
 tr:last-child td{border-bottom:none;}
 tr:hover td{background:#fdfaf6;}
 .zs{width:3px;height:28px;border-radius:2px;display:inline-block;}
@@ -213,11 +213,20 @@ tr:hover td{background:#fdfaf6;}
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th style="width:4px;padding:0"></th>
-          <th style="width:22%">Trip ID · Destination</th>
-          <th>Status</th><th>Depart</th><th>Days</th><th>OCC</th><th>Closed pax</th>
-          <th>Seats left</th><th>Pax</th><th>Sell/pax</th><th>Flight cost</th>
-          <th>Rev at risk</th><th>Flight cost at risk</th><th>Action</th>
+          <th style="width:4px;padding:0;min-width:4px"></th>
+          <th style="width:170px;min-width:170px">Trip ID · Destination</th>
+          <th style="width:88px;min-width:88px">Status</th>
+          <th style="width:64px;min-width:64px">Depart</th>
+          <th style="width:48px;min-width:48px">Days</th>
+          <th style="width:118px;min-width:118px">OCC</th>
+          <th style="width:74px;min-width:74px">Closed Pax</th>
+          <th style="width:76px;min-width:76px">Seats Left</th>
+          <th style="width:44px;min-width:44px">Pax</th>
+          <th style="width:76px;min-width:76px">Sell/Pax</th>
+          <th style="width:84px;min-width:84px">Flt Cost</th>
+          <th style="width:100px;min-width:100px">Rev at Risk</th>
+          <th style="width:110px;min-width:110px">Flt Cost Risk</th>
+          <th style="width:100px;min-width:100px">Action</th>
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table>
