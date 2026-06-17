@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARBA Ops — Trip Decision Board</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:ital,wght@0,300;0,600;0,700;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f4ef;--surface:#fff;--surface2:#f0ece4;--border:rgba(60,45,30,.1);--border2:rgba(60,45,30,.18);--text:#1e1a14;--muted:#8a8070;--muted2:#6b6055;--critical:#c0392b;--critical-bg:#fdf0ee;--critical-border:#f0c4be;--decision:#b05a10;--decision-bg:#fdf4ea;--decision-border:#f0d0a0;--watch:#1a7a4a;--watch-bg:#edf7f2;--watch-border:#b8dfc8;--val-c:#6b4fa0;--val-bg:#f4f0fa;--val-border:#cfc0f0;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;font-size:13px;line-height:1.5;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23b09070' fill-opacity='0.03'%3E%3Cpath d='M0 0h40v1H0zM0 20h40v1H0z'/%3E%3C/g%3E%3C/svg%3E");pointer-events:none;z-index:0;}
+.layout{display:flex;min-height:100vh;position:relative;z-index:1;}
+.sidebar{width:230px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;}
+.sidebar-brand{padding:0 20px 20px;border-bottom:1px solid var(--border);margin-bottom:16px;}
+.brand-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.brand-title{font-family:'Fraunces',serif;font-size:19px;font-weight:700;color:var(--text);line-height:1.1;}
+.brand-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:5px;}
+.month-switcher{padding:0 16px;margin-bottom:16px;}
+.month-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.month-btn{display:block;width:100%;text-align:left;padding:5px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--muted2);cursor:pointer;font-family:'Fraunces',serif;font-size:12px;font-weight:600;margin-bottom:4px;transition:all .15s;}
+.month-btn:hover{border-color:var(--text);color:var(--text);}
+.month-btn.active{background:var(--text);color:#fff;border-color:var(--text);}
+.month-stat{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:400;display:block;margin-top:1px;opacity:.65;}
+.action-pills{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px;}
+.apill{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:20px;border:1px solid;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.03em;transition:all .15s;white-space:nowrap;}
+.apill:hover{transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.apill-count{opacity:.7;font-size:9px;}
+.apill.ap-all{background:var(--surface);border-color:var(--border2);color:var(--muted2);}
+.apill.ap-all.active,.apill.ap-all:hover{background:var(--text);border-color:var(--text);color:#fff;}
+.apill.ap-crit{background:var(--critical-bg);border-color:var(--critical-border);color:var(--critical);}
+.apill.ap-crit.active{background:var(--critical);border-color:var(--critical);color:#fff;}
+.apill.ap-dec{background:var(--decision-bg);border-color:var(--decision-border);color:var(--decision);}
+.apill.ap-dec.active{background:var(--decision);border-color:var(--decision);color:#fff;}
+.apill.ap-watch{background:var(--watch-bg);border-color:var(--watch-border);color:var(--watch);}
+.apill.ap-watch.active{background:var(--watch);border-color:var(--watch);color:#fff;}
+.nav-divider{height:1px;background:var(--border);margin:12px 0;}
+.nav-section-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:0 20px 7px;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 20px;cursor:pointer;border-left:2px solid transparent;transition:all .15s;margin-bottom:2px;}
+.nav-item:hover{background:var(--surface2);}
+.nav-item.active{border-left-color:var(--text);background:var(--surface2);}
+.nav-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.nav-label{font-size:12px;font-weight:500;color:var(--text);flex:1;}
+.nav-count{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--muted2);}
+.sidebar-footer{margin-top:auto;padding:14px 20px 0;border-top:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.7;}
+.main{flex:1;padding:30px 34px;min-width:0;}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;}
+.page-title{font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:var(--text);line-height:1.1;}
+.page-title span{font-style:italic;font-weight:300;}
+.page-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:5px;}
+.live-badge{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:6px 12px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted2);}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--watch);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.fin-banner{background:var(--critical-bg);border:1px solid var(--critical-border);border-radius:12px;padding:14px 18px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-bottom:18px;}
+.fin-metric{flex:1;min-width:130px;}
+.fin-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--critical);margin-bottom:3px;}
+.fin-label.o{color:var(--decision);}
+.fin-label.n{color:var(--muted2);}
+.fin-value{font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:var(--critical);}
+.fin-value.o{color:var(--decision);}
+.fin-value.n{color:var(--text);}
+.fin-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+.zone-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+.zone-card{border-radius:12px;padding:14px 16px;border:1px solid;cursor:pointer;transition:transform .15s,box-shadow .15s;}
+.zone-card:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.07);}
+.zone-card.critical{background:var(--critical-bg);border-color:var(--critical-border);}
+.zone-card.decision{background:var(--decision-bg);border-color:var(--decision-border);}
+.zone-card.watch{background:var(--watch-bg);border-color:var(--watch-border);}
+.ztag{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.09em;text-transform:uppercase;margin-bottom:7px;}
+.ztag.c{color:var(--critical);}
+.ztag.d{color:var(--decision);}
+.ztag.w{color:var(--watch);}
+.znum{font-family:'Fraunces',serif;font-size:36px;font-weight:700;line-height:1;}
+.znum.c{color:var(--critical);}
+.znum.d{color:var(--decision);}
+.znum.w{color:var(--watch);}
+.zlbl{font-size:12px;color:var(--text);font-weight:500;}
+.zsub{font-size:11px;color:var(--muted);margin-top:1px;}
+.controls{display:flex;align-items:center;gap:7px;margin-bottom:10px;flex-wrap:wrap;}
+.section-title{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--text);margin-right:auto;}
+.filter-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 11px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--muted2);cursor:pointer;transition:all .15s;}
+.filter-btn:hover{border-color:var(--text);color:var(--text);}
+.filter-btn.active{background:var(--text);color:#fff;}
+.filter-btn.ao{background:var(--watch);border-color:var(--watch);color:#fff;}
+.filter-btn.av{background:var(--val-c);border-color:var(--val-c);color:#fff;}
+.search-wrap{position:relative;}
+.search-input{background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:4px 9px 4px 26px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text);outline:none;width:170px;}
+.search-input:focus{border-color:var(--muted2);}
+.si{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;pointer-events:none;}
+.sort-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 9px;border-radius:5px;border:1px solid var(--border2);background:var(--surface);color:var(--muted2);cursor:pointer;transition:all .15s;}
+.sort-btn:hover,.sort-btn.active{background:var(--text);color:#fff;border-color:var(--text);}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:13px;overflow:hidden;overflow-x:auto;}
+table{width:100%;border-collapse:collapse;min-width:900px;}
+thead{background:var(--surface2);border-bottom:1px solid var(--border2);}
+th{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);padding:10px 11px;text-align:left;font-weight:500;white-space:nowrap;}
+td{padding:9px 11px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#fdfaf6;}
+.zs{width:3px;height:28px;border-radius:2px;display:inline-block;}
+.tid{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text);font-weight:500;}
+.tdest{font-size:11px;color:var(--muted);margin-top:1px;}
+.sbadge{display:inline-flex;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.04em;padding:2px 6px;border-radius:4px;font-weight:600;text-transform:uppercase;}
+.so{background:var(--watch-bg);color:var(--watch);border:1px solid var(--watch-border);}
+.sv{background:var(--val-bg);color:var(--val-c);border:1px solid var(--val-border);}
+.dpill{display:inline-flex;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;padding:2px 6px;border-radius:5px;white-space:nowrap;}
+.dc{background:var(--critical-bg);color:var(--critical);}
+.dd{background:var(--decision-bg);color:var(--decision);}
+.dw{background:var(--watch-bg);color:var(--watch);}
+.ow{display:flex;align-items:center;gap:6px;}
+.ot{width:65px;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+.of{height:100%;border-radius:3px;}
+.oh{background:var(--watch);}
+.om{background:var(--decision);}
+.ol{background:var(--critical);}
+.op{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;min-width:30px;}
+.op.h{color:var(--watch);}
+.op.m{color:var(--decision);}
+.op.l{color:var(--critical);}
+.sv2{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;}
+.svn{color:var(--watch);}
+.svf{color:var(--decision);}
+.svm{color:var(--critical);}
+.ms{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted2);}
+.rr{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--critical);}
+.rf{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;background:var(--decision-bg);color:var(--decision);padding:2px 6px;border-radius:4px;border:1px solid var(--decision-border);}
+.ok{color:var(--watch);font-family:'IBM Plex Mono',monospace;font-size:11px;}
+.at{display:inline-flex;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.04em;padding:2px 7px;border-radius:4px;font-weight:600;text-transform:uppercase;white-space:nowrap;}
+.af{background:var(--critical-bg);color:var(--critical);border:1px solid var(--critical-border);}
+.ab{background:var(--decision-bg);color:var(--decision);border:1px solid var(--decision-border);}
+.aw{background:var(--watch-bg);color:var(--watch);border:1px solid var(--watch-border);}
+.ad{background:var(--val-bg);color:var(--val-c);border:1px solid var(--val-border);}
+.ag{background:var(--watch-bg);color:var(--watch);border:1px solid var(--watch-border);}
+.empty-state{text-align:center;padding:44px 20px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fadeIn .3s ease both;}
+#loading-overlay{position:fixed;inset:0;background:rgba(247,244,239,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;gap:12px;}
+#loading-overlay .lo-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--text);}
+#loading-overlay .lo-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.08em;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lo-spinner{width:22px;height:22px;border:2px solid var(--border2);border-top-color:var(--text);border-radius:50%;animation:spin .7s linear infinite;}
+#error-toast{display:none;position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--critical-bg);border:1px solid var(--critical-border);border-radius:8px;padding:11px 18px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--critical);z-index:201;white-space:nowrap;}
+.cfg-val{border-bottom:1px dashed var(--muted);cursor:pointer;color:var(--text);font-weight:600;padding:0 1px;transition:color .15s;}
+.cfg-val:hover{color:var(--decision);}
+.cfg-input{width:32px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:var(--text);background:var(--surface2);border:1px solid var(--decision);border-radius:3px;padding:0 3px;text-align:center;outline:none;}
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="lo-spinner"></div>
+  <div class="lo-title">Loading trips…</div>
+  <div class="lo-sub">Fetching live data from Airtable</div>
+</div>
+<div id="error-toast"></div>
+
+<div class="layout">
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-eyebrow">ARBA Travel · Ops</div>
+    <div class="brand-title">Trip<br>Decision<br>Board</div>
+    <div class="brand-sub">JT Triplist · Live data</div>
+  </div>
+  <div class="month-switcher">
+    <div class="month-label">Month</div>
+    <div id="month-nav"></div>
+  </div>
+  <div class="sidebar-footer">
+    <div>🟢 Open = ticket committed</div>
+    <div>🟣 Validation = watching OCC</div>
+    <div style="margin-top:7px">Buy trigger: <span class="cfg-val" data-key="buyOcc" onclick="editCfg(this)"></span>% OCC</div>
+    <div>Customer full pmt: <span class="cfg-val" data-key="custDays" onclick="editCfg(this)"></span>d DBD</div>
+    <div>Ticket deadline: <span class="cfg-val" data-key="ticketDays" onclick="editCfg(this)"></span>d DBD</div>
+    <div style="margin-top:7px;color:var(--muted)" id="today-display"></div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="page-header anim">
+    <div>
+      <div class="page-title" id="page-title">May 2026 <span>· trip decisions</span></div>
+      <div class="page-sub">Open & Validation only · Cancel excluded · sorted by urgency</div>
+    </div>
+    <div class="live-badge"><span class="live-dot"></span>Live · Airtable &nbsp;<span id="last-updated" style="opacity:.6"></span></div>
+  </div>
+  <div class="fin-banner anim" style="animation-delay:.04s" id="fin-banner"></div>
+  <div class="action-pills anim" style="animation-delay:.07s" id="action-pills"></div>
+  <div class="anim" style="animation-delay:.1s">
+    <div class="controls">
+      <span class="section-title" id="section-title">All Active Trips</span>
+      <button class="filter-btn active" id="fb-all" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" id="fb-open" onclick="setFilter('open',this)">Open</button>
+      <button class="filter-btn" id="fb-val" onclick="setFilter('validation',this)">Validation</button>
+      <button class="sort-btn active" id="sb-urg" onclick="setSort('urgency')">Urgency ↑</button>
+      <button class="sort-btn" id="sb-occ" onclick="setSort('occ')">OCC ↑</button>
+      <button class="sort-btn" id="sb-az" onclick="setSort('dest')">A–Z</button>
+      <div class="search-wrap"><span class="si">⌕</span><input class="search-input" type="text" placeholder="Search..." oninput="setSearch(this.value)"></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:4px;padding:0"></th>
+          <th style="width:22%">Trip ID · Destination</th>
+          <th>Status</th><th>Depart</th><th>Days</th><th>OCC</th><th>Closed pax</th>
+          <th>Seats left</th><th>Pax</th><th>Sell/pax</th><th>Flight cost</th>
+          <th>Rev at risk</th><th>Flight cost at risk</th><th>Action</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+</div>
+
+<script>
+// Editable config — persisted in localStorage
+const CFG_DEFAULTS={buyOcc:35,custDays:45,ticketDays:30};
+const CONFIG=Object.assign({},CFG_DEFAULTS,JSON.parse(localStorage.getItem('gt-cfg')||'{}'));
+function saveCfg(){localStorage.setItem('gt-cfg',JSON.stringify(CONFIG));}
+function renderCfgSpans(){
+  document.querySelectorAll('.cfg-val').forEach(el=>{
+    el.textContent=CONFIG[el.dataset.key];
+  });
+}
+function editCfg(el){
+  const key=el.dataset.key;
+  const inp=document.createElement('input');
+  inp.type='number';inp.className='cfg-input';inp.value=CONFIG[key];
+  el.replaceWith(inp);inp.focus();inp.select();
+  function commit(){
+    const v=parseInt(inp.value);
+    if(!isNaN(v)&&v>0)CONFIG[key]=v;
+    saveCfg();
+    const span=document.createElement('span');
+    span.className='cfg-val';span.dataset.key=key;
+    span.textContent=CONFIG[key];span.onclick=()=>editCfg(span);
+    inp.replaceWith(span);
+    render();
+  }
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')commit();if(e.key==='Escape'){CONFIG[key]=CONFIG[key];commit();}});
+  inp.addEventListener('blur',commit);
+}
+
+const TODAY = new Date();
+document.getElementById('today-display').textContent =
+  'Today: ' + TODAY.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+function daysTo(d){return Math.round((new Date(d)-TODAY)/86400000);}
+function zone(d){return d<30?'critical':d<60?'decision':'watch';}
+function oc(o){return o>=85?'h':o>=50?'m':'l';}
+function sc(v){return v===0?'svn':v<=5?'svf':'svm';}
+function dc(d){return d<30?'dc':d<60?'dd':'dw';}
+function zc(z){return z==='critical'?'var(--critical)':z==='decision'?'var(--decision)':'var(--watch)';}
+function fmt(n){return'RM '+Math.round(n).toLocaleString();}
+
+function getAction(t){
+  const{days,occ,status}=t;
+  const{buyOcc,custDays,ticketDays}=CONFIG;
+  if(status==='Open'){
+    if(occ>=95)return{l:'Full ✓',c:'ag'};
+    if(occ>=80)return{l:'Top-up',c:'aw'};
+    if(days<ticketDays)return{l:'Fill now!',c:'af'};
+    return{l:'Push fill',c:'af'};
+  }
+  if(status==='Validation'){
+    if(occ>=buyOcc)return{l:'Buy ticket',c:'ab'};
+    if(occ>=20&&days<custDays)return{l:'Buy or kill',c:'ad'};
+    if(days<ticketDays)return{l:'Kill/transfer',c:'af'};
+    if(days<custDays)return{l:'Decide now',c:'ad'};
+    return{l:'Watch OCC',c:'aw'};
+  }
+  return{l:'—',c:''};
+}
+
+function enrich(arr){
+  return arr.map(t=>{
+    const d=daysTo(t.depart);
+    const v=Math.max(0,t.vac??0);
+    return{...t,days:d,vac:v,zone:zone(d)};
+  });
+}
+
+// Month config — May 2026 → Jan 2027
+const MONTHS=[
+  {key:'2026-05',label:'May',      year:'2026'},
+  {key:'2026-06',label:'June',     year:'2026'},
+  {key:'2026-07',label:'July',     year:'2026'},
+  {key:'2026-08',label:'August',   year:'2026'},
+  {key:'2026-09',label:'September',year:'2026'},
+  {key:'2026-10',label:'October',  year:'2026'},
+  {key:'2026-11',label:'November', year:'2026'},
+  {key:'2026-12',label:'December', year:'2026'},
+  {key:'2027-01',label:'January',  year:'2027'},
+  {key:'2027-02',label:'February', year:'2027'},
+  {key:'2027-03',label:'March',    year:'2027'},
+  {key:'2027-04',label:'April',    year:'2027'},
+];
+
+let DATA={};
+MONTHS.forEach(m=>DATA[m.key]=[]);
+
+function groupByMonth(trips){
+  const raw={};
+  MONTHS.forEach(m=>raw[m.key]=[]);
+  for(const t of trips){
+    const mk=t.depart?.slice(0,7);
+    if(mk && raw[mk])raw[mk].push(t);
+  }
+  const out={};
+  MONTHS.forEach(m=>out[m.key]=enrich(raw[m.key]));
+  return out;
+}
+
+function buildMonthNav(){
+  const nav=document.getElementById('month-nav');
+  let html='';
+  let lastYear='';
+  for(const m of MONTHS){
+    if(m.year!==lastYear){
+      html+=`<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:${lastYear?'10px':'2px'} 4px 5px;opacity:.7">${m.year}</div>`;
+      lastYear=m.year;
+    }
+    html+=`<button class="month-btn${m.key===activeMonth?' active':''}" onclick="setMonth('${m.key}')" id="mbtn-${m.key}">${m.label}<span class="month-stat" id="stat-${m.key}">—</span></button>`;
+  }
+  nav.innerHTML=html;
+}
+
+// ── UI state ──────────────────────────────────────────────
+let activeMonth='2026-05',activeView='all',activeFilter='all',activeSort='urgency',searchQ='',activeAction=null;
+
+const ACTION_ORDER=['Fill now!','Buy ticket','Buy or kill','Decide now','Kill/transfer','Top-up','Push fill','Watch OCC','Full ✓'];
+const ACTION_CLS={'Fill now!':'ap-crit','Buy ticket':'ap-dec','Buy or kill':'ap-crit','Decide now':'ap-dec','Kill/transfer':'ap-crit','Top-up':'ap-watch','Push fill':'ap-dec','Watch OCC':'ap-watch','Full ✓':'ap-watch'};
+
+function buildActionNav(){
+  const trips=DATA[activeMonth]||[];
+  const counts={};
+  for(const t of trips){const a=getAction(t).l;counts[a]=(counts[a]||0)+1;}
+  const container=document.getElementById('action-pills');
+  let html=`<button class="apill ap-all${activeAction===null?' active':''}" onclick="setAction(null,this)">All <span class="apill-count">${trips.length}</span></button>`;
+  const present=ACTION_ORDER.filter(a=>counts[a]);
+  for(const a of present){
+    html+=`<button class="apill ${ACTION_CLS[a]||'ap-watch'}${activeAction===a?' active':''}" onclick="setAction('${a}',this)">${a} <span class="apill-count">${counts[a]}</span></button>`;
+  }
+  container.innerHTML=html;
+}
+
+function setAction(a,el){
+  activeAction=a;
+  render();
+}
+
+function setMonth(m){
+  activeMonth=m;activeView='all';activeFilter='all';activeAction=null;
+  document.querySelectorAll('.nav-item').forEach((n,i)=>{if(i===0)n.classList.add('active');else n.classList.remove('active');});
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active','ao','av'));
+  document.getElementById('fb-all').classList.add('active');
+  document.querySelectorAll('.month-btn').forEach(b=>b.classList.remove('active'));
+  const btn=document.getElementById('mbtn-'+m);
+  if(btn)btn.classList.add('active');
+  const mo=MONTHS.find(x=>x.key===m);
+  document.getElementById('page-title').innerHTML=(mo?mo.label+' '+mo.year:m)+' <span>· trip decisions</span>';
+  render();
+}
+function setView(v,el){
+  activeView=v;activeFilter='all';
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active','ao','av'));
+  document.getElementById('fb-all').classList.add('active');
+  render();
+}
+function setFilter(f,btn){
+  activeFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active','ao','av'));
+  const cls={all:'active',open:'ao',validation:'av'};
+  btn.classList.add(cls[f]||'active');
+  render();
+}
+function setSort(s){
+  activeSort=s;
+  document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sb-'+{urgency:'urg',occ:'occ',dest:'az'}[s]).classList.add('active');
+  render();
+}
+function setSearch(q){searchQ=q.toLowerCase();render();}
+
+function getFiltered(){
+  let d=DATA[activeMonth];
+  if(activeView==='critical')d=d.filter(t=>t.zone==='critical');
+  else if(activeView==='decision')d=d.filter(t=>t.zone==='decision');
+  else if(activeView==='watch')d=d.filter(t=>t.zone==='watch');
+  else if(activeView==='open')d=d.filter(t=>t.status==='Open');
+  else if(activeView==='validation')d=d.filter(t=>t.status==='Validation');
+  if(activeFilter==='open')d=d.filter(t=>t.status==='Open');
+  else if(activeFilter==='validation')d=d.filter(t=>t.status==='Validation');
+  if(activeAction!==null)d=d.filter(t=>getAction(t).l===activeAction);
+  if(searchQ){const terms=searchQ.split(',').map(s=>s.trim()).filter(Boolean);d=d.filter(t=>terms.some(q=>t.dest?.toLowerCase().includes(q)||t.id?.toLowerCase().includes(q)));}
+  return d;
+}
+function getSorted(d){
+  if(activeSort==='urgency')return[...d].sort((a,b)=>{const zo={critical:0,decision:1,watch:2};if(zo[a.zone]!==zo[b.zone])return zo[a.zone]-zo[b.zone];return a.occ-b.occ;});
+  if(activeSort==='occ')return[...d].sort((a,b)=>a.occ-b.occ);
+  return[...d].sort((a,b)=>(a.dest||'').localeCompare(b.dest||''));
+}
+
+function render(){
+  buildActionNav();
+  const all=DATA[activeMonth];
+  const filtered=getFiltered();
+  const sorted=getSorted(filtered);
+
+  for(const m of MONTHS){
+    const d=DATA[m.key]||[];
+    const el=document.getElementById('stat-'+m.key);
+    if(el)el.textContent=d.filter(t=>t.status==='Open').length+' open · '+d.filter(t=>t.status==='Validation').length+' val';
+  }
+
+  const open=all.filter(t=>t.status==='Open');
+  const val=all.filter(t=>t.status==='Validation');
+  const crit=all.filter(t=>t.zone==='critical');
+  const dec=all.filter(t=>t.zone==='decision');
+  const wat=all.filter(t=>t.zone==='watch');
+
+
+  const owv=open.filter(t=>t.vac>0);
+  const rr=owv.reduce((s,t)=>s+t.vac*(t.sell||0),0);
+  const fr=owv.filter(t=>t.flight>0).reduce((s,t)=>s+t.vac*(t.flight||0),0);
+  const tv=open.reduce((s,t)=>s+t.vac,0);
+
+  const openClosed=open.reduce((s,t)=>s+Math.max(0,(t.pax??0)-(t.vac??0)),0);
+  const openTotal=open.reduce((s,t)=>s+( t.pax??0),0);
+  const openPct=openTotal>0?Math.round(openClosed/openTotal*100):0;
+  const allClosed=all.reduce((s,t)=>s+Math.max(0,(t.pax??0)-(t.vac??0)),0);
+  const allTotal=all.reduce((s,t)=>s+(t.pax??0),0);
+  const allPct=allTotal>0?Math.round(allClosed/allTotal*100):0;
+  function pctColor(p){return p>=80?'var(--watch)':p>=50?'var(--decision)':'var(--critical)';}
+
+  document.getElementById('fin-banner').innerHTML=`
+    <div class="fin-metric"><div class="fin-label">Rev at Risk</div><div class="fin-value">${fmt(rr)}</div><div class="fin-sub">vacant seats × sell price</div></div>
+    <div class="fin-metric"><div class="fin-label o">Flight Cost at Risk</div><div class="fin-value o">${fmt(fr)}</div><div class="fin-sub">confirmed burn on empty seats</div></div>
+    <div class="fin-metric"><div class="fin-label n">Open Trips</div><div class="fin-value n">${open.length}</div><div class="fin-sub">${tv} seats to fill</div></div>
+    <div class="fin-metric"><div class="fin-label n">Validation</div><div class="fin-value n">${val.length}</div><div class="fin-sub">pending buy decision</div></div>
+    <div class="fin-metric"><div class="fin-label n">Open Fill Rate</div><div class="fin-value n" style="color:${pctColor(openPct)}">${openPct}%</div><div class="fin-sub">${openClosed.toLocaleString()} / ${openTotal.toLocaleString()} pax confirmed</div></div>
+    <div class="fin-metric"><div class="fin-label n">Overall Fill Rate</div><div class="fin-value n" style="color:${pctColor(allPct)}">${allPct}%</div><div class="fin-sub">${allClosed.toLocaleString()} / ${allTotal.toLocaleString()} pax (open + val)</div></div>`;
+
+  const st={all:'All Active Trips',critical:'🔴 Critical — Action Required',decision:'🟠 Decision Zone',watch:'🟡 Watch List',open:'Open Trips (Committed)',validation:'Validation Trips (Pending)'};
+  document.getElementById('section-title').textContent=st[activeView]||'All Active Trips';
+
+  const tbody=document.getElementById('tbody');
+  if(!sorted.length){tbody.innerHTML=`<tr><td colspan="14" class="empty-state">No trips found</td></tr>`;return;}
+  tbody.innerHTML=sorted.map(t=>{
+    const o=t.occ||0,ocl=oc(o),act=getAction(t);
+    const rr2=t.vac>0?`<span class="rr">${fmt(t.vac*(t.sell||0))}</span>`:'<span class="ok">✓ 0</span>';
+    const fr2=t.vac>0&&t.flight>0?`<span class="rf">${fmt(t.vac*(t.flight||0))}</span>`:t.status==='Open'&&t.vac>0?'<span class="ms">—</span>':'<span class="ok">✓ 0</span>';
+    return`<tr>
+      <td style="padding:0;width:4px"><div class="zs" style="background:${zc(t.zone)}"></div></td>
+      <td><div class="tid">${t.id||'—'}</div><div class="tdest">${t.dest||'—'}</div></td>
+      <td><span class="sbadge ${t.status==='Open'?'so':'sv'}">${t.status}</span></td>
+      <td class="ms">${t.depart?t.depart.slice(8)+'/'+t.depart.slice(5,7):'—'}</td>
+      <td><span class="dpill ${dc(t.days)}">${t.days}d</span></td>
+      <td><div class="ow"><div class="ot"><div class="of o${ocl}" style="width:${Math.min(o,100)}%"></div></div><span class="op ${ocl}">${o}%</span></div></td>
+      <td class="ms">${t.pax!=null?Math.max(0,(t.pax??0)-(t.vac??0)):'—'}</td>
+      <td><span class="sv2 ${sc(t.vac)}">${t.vac===0?'✓ Full':t.vac+' left'}</span></td>
+      <td class="ms">${t.pax||'—'}</td>
+      <td class="ms">${t.sell?'RM '+t.sell.toLocaleString():'—'}</td>
+      <td class="ms">${t.flight?'RM '+t.flight.toLocaleString():'—'}</td>
+      <td>${rr2}</td><td>${fr2}</td>
+      <td><span class="at ${act.c}">${act.l}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Data loading ──────────────────────────────────────────
+function showError(msg){
+  const el=document.getElementById('error-toast');
+  el.textContent='⚠ '+msg;
+  el.style.display='block';
+  setTimeout(()=>el.style.display='none',6000);
+}
+
+async function loadData(silent=false){
+  try{
+    if(!silent)document.getElementById('loading-overlay').style.display='flex';
+    const r=await fetch('/api/trips');
+    if(!r.ok)throw new Error(`Server error ${r.status}`);
+    const trips=await r.json();
+    DATA=groupByMonth(trips);
+    buildMonthNav();
+    renderCfgSpans();
+    const now=new Date();
+    document.getElementById('last-updated').textContent=
+      'updated '+now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    render();
+  }catch(e){
+    showError(e.message);
+    render();
+  }finally{
+    document.getElementById('loading-overlay').style.display='none';
+  }
+}
+
+// Initial load + auto-refresh every 3 minutes
+loadData();
+setInterval(()=>loadData(true), 3 * 60 * 1000);
+</script>
+</body>
+</html>
