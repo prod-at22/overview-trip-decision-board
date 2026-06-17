@@ -507,11 +507,13 @@ const AT_KEY='patOlJgRnZF49pF90.15cc95b90240ddf3872acd11f318137586c9d748b02c7e9a
 const AT_URL='https://api.airtable.com/v0';
 const ACTIVE_MONTHS=['2026-05','2026-06','2026-07','2026-08','2026-09','2026-10','2026-11','2026-12','2027-01','2027-02','2027-03','2027-04'];
 
-async function atFetch(baseId,tableId,fields){
+async function atFetch(baseId,tableId,fields,formula){
   const records=[];let offset=null;
   do{
     const p=new URLSearchParams();
     fields.forEach(f=>p.append('fields[]',f));
+    if(formula)p.set('filterByFormula',formula);
+    p.set('pageSize','100');
     if(offset)p.set('offset',offset);
     const r=await fetch(`${AT_URL}/${baseId}/${tableId}?${p}`,{headers:{Authorization:`Bearer ${AT_KEY}`}});
     if(!r.ok)throw new Error(`Airtable ${r.status}`);
@@ -555,9 +557,11 @@ function showError(msg){
 async function loadData(silent=false){
   try{
     if(!silent)document.getElementById('loading-overlay').style.display='flex';
+    const JT_FORMULA="AND(OR({status}='Open',{status}='Validation'),IS_AFTER({departdate},DATEADD(TODAY(),-14,'days')),NOT({tripID}=''))";
+    const GT_FORMULA="AND(FIND('UMKMD',{tripID}),OR({status}='Open',{status}='Validation'))";
     const [jtRec,gtRec]=await Promise.all([
-      atFetch('app7eJKfcIhJSWQxL','tblzjc4HuGSZGE17c',JT_FIELDS),
-      atFetch('appa9iYMMw5VEg7L1','tblukmSuILCXx5otl',GT_FIELDS),
+      atFetch('app7eJKfcIhJSWQxL','tblzjc4HuGSZGE17c',JT_FIELDS,JT_FORMULA),
+      atFetch('appa9iYMMw5VEg7L1','tblukmSuILCXx5otl',GT_FIELDS,GT_FORMULA),
     ]);
     const trips=[
       ...mapRecords(jtRec,JT_MAP),
