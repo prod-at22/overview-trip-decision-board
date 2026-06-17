@@ -139,6 +139,14 @@ tr:hover td{background:#fdfaf6;}
 @keyframes spin{to{transform:rotate(360deg)}}
 .lo-spinner{width:22px;height:22px;border:2px solid var(--border2);border-top-color:var(--text);border-radius:50%;animation:spin .7s linear infinite;}
 #error-toast{display:none;position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--critical-bg);border:1px solid var(--critical-border);border-radius:8px;padding:11px 18px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--critical);z-index:201;white-space:nowrap;}
+#pw-gate{position:fixed;inset:0;background:#0f0d0a;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:300;gap:16px;}
+#pw-gate .pw-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#6b6055;}
+#pw-gate .pw-title{font-family:'Fraunces',serif;font-size:26px;font-weight:700;color:#f7f4ef;margin-bottom:8px;}
+#pw-gate input{background:#1e1a14;border:1px solid #3a3020;border-radius:8px;padding:12px 18px;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#f7f4ef;outline:none;width:280px;text-align:center;letter-spacing:.06em;}
+#pw-gate input:focus{border-color:#8a8070;}
+#pw-gate button{width:280px;padding:12px;border-radius:8px;border:none;background:#f7f4ef;color:#0f0d0a;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;letter-spacing:.08em;cursor:pointer;transition:opacity .15s;}
+#pw-gate button:hover{opacity:.85;}
+#pw-gate .pw-error{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#c0392b;display:none;}
 .cfg-val{border-bottom:1px dashed var(--muted);cursor:pointer;color:var(--text);font-weight:600;padding:0 1px;transition:color .15s;}
 .cfg-val:hover{color:var(--decision);}
 .cfg-input{width:32px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:var(--text);background:var(--surface2);border:1px solid var(--decision);border-radius:3px;padding:0 3px;text-align:center;outline:none;}
@@ -146,6 +154,13 @@ tr:hover td{background:#fdfaf6;}
 </head>
 <body>
 
+<div id="pw-gate">
+  <div class="pw-eyebrow">ARBA Travel · Ops</div>
+  <div class="pw-title">Trip Decision Board</div>
+  <input id="pw-input" type="password" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkPw()">
+  <button onclick="checkPw()">Unlock</button>
+  <div class="pw-error" id="pw-error">Incorrect password</div>
+</div>
 <div id="loading-overlay">
   <div class="lo-spinner"></div>
   <div class="lo-title">Loading trips…</div>
@@ -212,6 +227,24 @@ tr:hover td{background:#fdfaf6;}
 </div>
 
 <script>
+// ── Password gate ─────────────────────────────────────────
+function checkPw(){
+  const val=document.getElementById('pw-input').value;
+  if(val==='arba2026'){
+    sessionStorage.setItem('gt-auth','1');
+    document.getElementById('pw-gate').style.display='none';
+    loadData();
+  }else{
+    const err=document.getElementById('pw-error');
+    err.style.display='block';
+    document.getElementById('pw-input').value='';
+    setTimeout(()=>err.style.display='none',2000);
+  }
+}
+if(sessionStorage.getItem('gt-auth')==='1'){
+  document.getElementById('pw-gate').style.display='none';
+}
+
 // Editable config — persisted in localStorage
 const CFG_DEFAULTS={buyOcc:35,custDays:45,ticketDays:30};
 const CONFIG=Object.assign({},CFG_DEFAULTS,JSON.parse(localStorage.getItem('gt-cfg')||'{}'));
@@ -545,9 +578,11 @@ async function loadData(silent=false){
   }
 }
 
-// Initial load + auto-refresh every 3 minutes
-loadData();
-setInterval(()=>loadData(true), 3 * 60 * 1000);
+// Initial load + auto-refresh every 3 minutes (only if authenticated)
+if(sessionStorage.getItem('gt-auth')==='1'){
+  loadData();
+  setInterval(()=>loadData(true), 3 * 60 * 1000);
+}
 </script>
 </body>
 </html>
