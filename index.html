@@ -480,11 +480,10 @@ function showError(msg){
 async function loadData(silent=false){
   try{
     if(!silent)document.getElementById('loading-overlay').style.display='flex';
-    const res=await fetch('/api/trips');
-    if(!res.ok)throw new Error('Server returned '+res.status);
-    const json=await res.json();
-    if(!json.ok)throw new Error(json.error||'Unknown error from proxy');
-    DATA=groupByMonth(json.trips);
+    const r=await fetch('/api/trips');
+    if(!r.ok)throw new Error(`Server error ${r.status}`);
+    const trips=await r.json();
+    DATA=groupByMonth(trips);
     buildMonthNav();
     renderCfgSpans();
     const now=new Date();
