@@ -469,6 +469,48 @@ function render(){
   }).join('');
 }
 
+// ── Airtable direct fetch ─────────────────────────────────
+const AT_KEY='patOlJgRnZF49pF90.15cc95b90240ddf3872acd11f318137586c9d748b02c7e9ac87ae163867be58c';
+const AT_URL='https://api.airtable.com/v0';
+const ACTIVE_MONTHS=['2026-05','2026-06','2026-07','2026-08','2026-09','2026-10','2026-11','2026-12','2027-01','2027-02','2027-03','2027-04'];
+
+async function atFetch(baseId,tableId,fields){
+  const records=[];let offset=null;
+  do{
+    const p=new URLSearchParams();
+    fields.forEach(f=>p.append('fields[]',f));
+    if(offset)p.set('offset',offset);
+    const r=await fetch(`${AT_URL}/${baseId}/${tableId}?${p}`,{headers:{Authorization:`Bearer ${AT_KEY}`}});
+    if(!r.ok)throw new Error(`Airtable ${r.status}`);
+    const d=await r.json();
+    records.push(...d.records);offset=d.offset??null;
+  }while(offset);
+  return records;
+}
+
+const JT_FIELDS=['tripID','destination','status','departdate','pax','Vacancy','OCC','adultprice','Flight Price Adult','Ground Price Adult'];
+const JT_MAP={'tripID':'id','destination':'dest','status':'status','departdate':'depart','pax':'pax','Vacancy':'vac','OCC':'occ','adultprice':'sell','Flight Price Adult':'flight','Ground Price Adult':'ground'};
+const GT_FIELDS=['tripID','destination','status','departdate','pax with added pax','Vacancy','OCC','adultprice'];
+const GT_MAP={'tripID':'id','destination':'dest','status':'status','departdate':'depart','pax with added pax':'pax','Vacancy':'vac','OCC':'occ','adultprice':'sell'};
+
+function mapRecords(records,fieldMap){
+  return records.map(r=>{
+    const f=r.fields??{},t={};
+    for(const[fn,k]of Object.entries(fieldMap))t[k]=f[fn]??null;
+    if(t.occ!==null)t.occ=Math.round((t.occ??0)*100);
+    if(t.vac!==null)t.vac=Math.max(0,t.vac??0);
+    t.sell=Math.round(t.sell??0);t.flight=Math.round(t.flight??0);t.ground=Math.round(t.ground??0);
+    return t;
+  }).filter(t=>
+    t.id&&t.depart&&
+    !/^SIN\/JT/i.test(t.id)&&
+    t.dest?.toLowerCase()!=='singapura'&&
+    (t.status==='Open'||t.status==='Validation')&&
+    ACTIVE_MONTHS.some(m=>t.depart.startsWith(m))&&
+    (new Date(t.depart)>=new Date(Date.now()-14*86400000))
+  );
+}
+
 // ── Data loading ──────────────────────────────────────────
 function showError(msg){
   const el=document.getElementById('error-toast');
@@ -480,9 +522,14 @@ function showError(msg){
 async function loadData(silent=false){
   try{
     if(!silent)document.getElementById('loading-overlay').style.display='flex';
-    const r=await fetch('/api/trips');
-    if(!r.ok)throw new Error(`Server error ${r.status}`);
-    const trips=await r.json();
+    const [jtRec,gtRec]=await Promise.all([
+      atFetch('app7eJKfcIhJSWQxL','tblzjc4HuGSZGE17c',JT_FIELDS),
+      atFetch('appa9iYMMw5VEg7L1','tblukmSuILCXx5otl',GT_FIELDS),
+    ]);
+    const trips=[
+      ...mapRecords(jtRec,JT_MAP),
+      ...mapRecords(gtRec,GT_MAP).filter(t=>t.id?.startsWith('UMKMD')),
+    ];
     DATA=groupByMonth(trips);
     buildMonthNav();
     renderCfgSpans();
