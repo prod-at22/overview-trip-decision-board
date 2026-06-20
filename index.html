@@ -208,6 +208,7 @@ tr:hover td{background:#fdfaf6;}
       <button class="sort-btn active" id="sb-urg" onclick="setSort('urgency')">Urgency ↑</button>
       <button class="sort-btn" id="sb-occ" onclick="setSort('occ')">OCC ↑</button>
       <button class="sort-btn" id="sb-az" onclick="setSort('dest')">A–Z</button>
+      <button class="sort-btn" id="sb-dep" onclick="setSort('depart')">Dept ↑</button>
       <div class="search-wrap"><span class="si">⌕</span><input class="search-input" type="text" placeholder="Search..." oninput="setSearch(this.value)"></div>
     </div>
     <div class="table-wrap">
@@ -420,7 +421,7 @@ function setFilter(f,btn){
 function setSort(s){
   activeSort=s;
   document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('sb-'+{urgency:'urg',occ:'occ',dest:'az'}[s]).classList.add('active');
+  document.getElementById('sb-'+{urgency:'urg',occ:'occ',dest:'az',depart:'dep'}[s]).classList.add('active');
   render();
 }
 function setSearch(q){searchQ=q.toLowerCase();render();}
@@ -441,6 +442,7 @@ function getFiltered(){
 function getSorted(d){
   if(activeSort==='urgency')return[...d].sort((a,b)=>{const zo={critical:0,decision:1,watch:2};if(zo[a.zone]!==zo[b.zone])return zo[a.zone]-zo[b.zone];return a.occ-b.occ;});
   if(activeSort==='occ')return[...d].sort((a,b)=>a.occ-b.occ);
+  if(activeSort==='depart')return[...d].sort((a,b)=>(a.depart||'').localeCompare(b.depart||''));
   return[...d].sort((a,b)=>(a.dest||'').localeCompare(b.dest||''));
 }
 
