@@ -440,7 +440,7 @@ function getFiltered(){
   return d;
 }
 function getSorted(d){
-  if(activeSort==='urgency')return[...d].sort((a,b)=>{const zo={critical:0,decision:1,watch:2};if(zo[a.zone]!==zo[b.zone])return zo[a.zone]-zo[b.zone];return a.occ-b.occ;});
+  if(activeSort==='urgency')return[...d].sort((a,b)=>{const zo={critical:0,decision:1,watch:2};if(zo[a.zone]!==zo[b.zone])return zo[a.zone]-zo[b.zone];const so={Open:0,Validation:1};const sd=(so[a.status]??1)-(so[b.status]??1);if(sd!==0)return sd;return a.occ-b.occ;});
   if(activeSort==='occ')return[...d].sort((a,b)=>a.occ-b.occ);
   if(activeSort==='depart')return[...d].sort((a,b)=>(a.depart||'').localeCompare(b.depart||''));
   return[...d].sort((a,b)=>(a.dest||'').localeCompare(b.dest||''));
