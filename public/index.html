@@ -368,7 +368,8 @@ function buildMonthNav(){
 }
 
 // ── UI state ──────────────────────────────────────────────
-let activeMonth='2026-05',activeView='all',activeFilter='all',activeSort='urgency',searchQ='',activeAction=null;
+const _now=new Date();
+let activeMonth=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0'),activeView='all',activeFilter='all',activeSort='urgency',searchQ='',activeAction=null;
 
 const ACTION_ORDER=['Fill now!','Buy ticket','Buy or kill','Decide now','Kill/transfer','Top-up','Push fill','Watch OCC','Full ✓'];
 const ACTION_CLS={'Fill now!':'ap-crit','Buy ticket':'ap-dec','Buy or kill':'ap-crit','Decide now':'ap-dec','Kill/transfer':'ap-crit','Top-up':'ap-watch','Push fill':'ap-dec','Watch OCC':'ap-watch','Full ✓':'ap-watch'};
