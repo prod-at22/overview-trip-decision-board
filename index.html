@@ -514,25 +514,89 @@ function render(){
   }).join('');
 }
 
-// ── API config ────────────────────────────────────────────
-const API_URL='https://gt-trip-api-production.up.railway.app';
+// ── Airtable config ───────────────────────────────────────
+const AT_KEY='patOlJgRnZF49pF90.15cc95b90240ddf3872acd11f318137586c9d748b02c7e9ac87ae163867be58c';
+const AT_URL='https://api.airtable.com/v0';
+const ACTIVE_MONTHS=['2026-05','2026-06','2026-07','2026-08','2026-09','2026-10','2026-11','2026-12','2027-01','2027-02','2027-03','2027-04'];
+
+async function atFetch(baseId,tableId,fields,formula){
+  const records=[];let offset=null;
+  do{
+    const p=new URLSearchParams();
+    fields.forEach(f=>p.append('fields[]',f));
+    if(formula)p.set('filterByFormula',formula);
+    p.set('pageSize','100');
+    if(offset)p.set('offset',offset);
+    const r=await fetch(`${AT_URL}/${baseId}/${tableId}?${p}`,{headers:{Authorization:`Bearer ${AT_KEY}`}});
+    if(!r.ok)throw new Error(`Airtable ${r.status}`);
+    const d=await r.json();
+    records.push(...d.records);offset=d.offset??null;
+  }while(offset);
+  return records;
+}
+
+const JT_BASE='app7eJKfcIhJSWQxL', JT_TBL='tblzjc4HuGSZGE17c';
+const GT_BASE='appa9iYMMw5VEg7L1', GT_TBL='tblukmSuILCXx5otl';
+const JT_FIELDS=['tripID','destination','status','departdate','pax','Vacancy','OCC','adultprice','Flight Price Adult','Ground Price Adult'];
+const GT_FIELDS=['tripID','destination','status','departdate','pax with added pax','Vacancy','OCC','adultprice'];
+
+function mapJT(r){
+  const f=r.fields??{};
+  const pax=Number(f['pax']??0);
+  const vac=Math.max(0,Number(f['Vacancy']??0));
+  const occ=pax>0?Math.round(((pax-vac)/pax)*100):Math.round((Number(f['OCC']??0))*100);
+  return{
+    id:f['tripID']??null,dest:f['destination']??null,status:f['status']??null,
+    depart:f['departdate']??null,pax,vac,occ,closedPax:pax-vac,
+    sell:Math.round(Number(f['adultprice']??0)),
+    flight:Math.round(Number(f['Flight Price Adult']??0)),
+    ground:Math.round(Number(f['Ground Price Adult']??0)),
+    source:'airtable',
+  };
+}
+
+function mapGT(r){
+  const f=r.fields??{};
+  const pax=Number(f['pax with added pax']??0);
+  const vac=Math.max(0,Number(f['Vacancy']??0));
+  const occ=pax>0?Math.round(((pax-vac)/pax)*100):Math.round((Number(f['OCC']??0))*100);
+  return{
+    id:f['tripID']??null,dest:f['destination']??null,status:f['status']??null,
+    depart:f['departdate']??null,pax,vac,occ,closedPax:pax-vac,
+    sell:Math.round(Number(f['adultprice']??0)),flight:0,ground:0,source:'airtable',
+  };
+}
+
+function isActive(t){
+  return t.id&&t.depart&&
+    !/^SIN\/JT/i.test(t.id)&&
+    t.dest?.toLowerCase()!=='singapura'&&
+    (t.status==='Open'||t.status==='Validation')&&
+    ACTIVE_MONTHS.some(m=>t.depart.startsWith(m))&&
+    (new Date(t.depart)>=new Date(Date.now()-14*86400000));
+}
 
 // ── Data loading ──────────────────────────────────────────
 function showError(msg){
   const el=document.getElementById('error-toast');
-  el.textContent='⚠ '+msg;
-  el.style.display='block';
+  el.textContent='⚠ '+msg;el.style.display='block';
   setTimeout(()=>el.style.display='none',6000);
 }
 
 async function loadData(silent=false){
   try{
     if(!silent)document.getElementById('loading-overlay').style.display='flex';
-    const r=await fetch(`${API_URL}/api/trips`);
-    if(!r.ok)throw new Error(`API error ${r.status}`);
-    const d=await r.json();
-    if(!d.ok)throw new Error(d.error||'API returned error');
-    DATA=groupByMonth(d.trips);
+    const JT_FORMULA="AND(OR({status}='Open',{status}='Validation'),IS_AFTER({departdate},DATEADD(TODAY(),-14,'days')),NOT({tripID}=''))";
+    const GT_FORMULA="AND(FIND('UMKMD',{tripID}),OR({status}='Open',{status}='Validation'))";
+    const [jtRec,gtRec]=await Promise.all([
+      atFetch(JT_BASE,JT_TBL,JT_FIELDS,JT_FORMULA),
+      atFetch(GT_BASE,GT_TBL,GT_FIELDS,GT_FORMULA),
+    ]);
+    const trips=[
+      ...jtRec.map(mapJT).filter(isActive),
+      ...gtRec.map(mapGT).filter(t=>t.id?.startsWith('UMKMD')&&isActive(t)),
+    ];
+    DATA=groupByMonth(trips);
     buildMonthNav();
     renderCfgSpans();
     const now=new Date();
@@ -540,8 +604,7 @@ async function loadData(silent=false){
       'updated '+now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
     render();
   }catch(e){
-    showError(e.message);
-    render();
+    showError(e.message);render();
   }finally{
     document.getElementById('loading-overlay').style.display='none';
   }
